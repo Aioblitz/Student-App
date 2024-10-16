@@ -1,0 +1,4 @@
+<resources>
+    <string name="app_name">Student</string>
+    <string name="currently_attending">Currently attending:</string>
+</resources>
