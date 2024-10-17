@@ -1,11 +1,14 @@
 package com.example.student.network
 
 import android.util.Log
+import com.example.student.encryption.EncryptionDecryption
 import com.google.gson.Gson
 import com.example.student.models.ContentModel
 import java.net.InetAddress
 import java.net.ServerSocket
 import java.net.Socket
+import javax.crypto.spec.IvParameterSpec
+import javax.crypto.spec.SecretKeySpec
 import kotlin.Exception
 import kotlin.concurrent.thread
 
@@ -19,8 +22,14 @@ class Server(private val iFaceImpl: NetworkMessageInterface) {
 
     private val svrSocket: ServerSocket = ServerSocket(PORT, 0, InetAddress.getByName("192.168.49.1"))
     private val clientMap: HashMap<String, Socket> = HashMap()
+    private lateinit var aesKey: SecretKeySpec
+    private lateinit var aesIV: IvParameterSpec
+    private val encryptionDecryption = EncryptionDecryption()
 
     init {
+        val hashedID = encryptionDecryption.hashStrSha256("816117992")
+        aesKey = encryptionDecryption.generateAESKey(hashedID)
+        aesIV = encryptionDecryption.generateIV(hashedID)
         thread {
             while (true) {
                 try {
@@ -41,7 +50,7 @@ class Server(private val iFaceImpl: NetworkMessageInterface) {
             Log.e("SERVER", "A new connection has been detected!")
             thread {
                 val clientReader = socket.inputStream.bufferedReader()
-                val clientWriter = socket.outputStream.bufferedWriter()
+//                val clientWriter = socket.outputStream.bufferedWriter()
                 var receivedJson: String?
 
                 // Read incoming messages from client
@@ -50,7 +59,8 @@ class Server(private val iFaceImpl: NetworkMessageInterface) {
                         receivedJson = clientReader.readLine()
                         if (receivedJson != null) {
                             Log.e("SERVER", "Received a message from client $it")
-                            val clientContent = Gson().fromJson(receivedJson, ContentModel::class.java)
+                            val decryptedMessage = encryptionDecryption.decryptMessage(receivedJson,aesKey,aesIV)
+                            val clientContent = Gson().fromJson(decryptedMessage, ContentModel::class.java)
 
                             // Let the networkMessageInterface handle the received content
                             iFaceImpl.onContent(clientContent)
@@ -73,7 +83,8 @@ class Server(private val iFaceImpl: NetworkMessageInterface) {
                 try {
                     val writer = socket.outputStream.bufferedWriter()
                     val contentAsStr = Gson().toJson(content)
-                    writer.write("$contentAsStr\n")
+                    val encryptedMessage = encryptionDecryption.encryptMessage(contentAsStr, aesKey, aesIV)
+                    writer.write("$encryptedMessage\n")
                     writer.flush()
                 } catch (e: Exception) {
                     Log.e("SERVER", "Failed to send message to client $ip")
