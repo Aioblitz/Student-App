@@ -46,7 +46,7 @@
     <androidx.constraintlayout.widget.ConstraintLayout
         android:id="@+id/clNoWifiDirectConnection"
         android:layout_width="match_parent"
-        android:visibility="gone"
+
         android:layout_height="match_parent"
         android:padding="32dp"
         app:layout_constraintBottom_toBottomOf="parent"
@@ -55,7 +55,7 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintVertical_bias="0.0">
-        <!-- Hidden by default        -->
+        <!-- Hidden by default   android:visibility="gone"     -->
 
         <TextView
             android:id="@+id/tvAppTitle"
@@ -71,6 +71,7 @@
 
         <Button
             android:id="@+id/btnCreateGroup"
+            android:visibility="gone"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:onClick="createGroup"
@@ -115,6 +116,7 @@
             android:layout_height="52dp"
             android:layout_marginBottom="24dp"
             android:ems="10"
+            android:text="816117992"
             android:hint="Enter Student ID"
             android:inputType="text"
             android:textColor="@android:color/white"
@@ -152,14 +154,14 @@
     <androidx.constraintlayout.widget.ConstraintLayout
         android:id="@+id/clHasConnection"
         android:padding="24dp"
-
+        android:visibility="gone"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent">
-        <!--This was by default not hidden  android:visibility="gone"      -->
+        <!--This was by default not hidden        -->
 
         <TextView
             android:id="@+id/tvCurrentlyAttending"

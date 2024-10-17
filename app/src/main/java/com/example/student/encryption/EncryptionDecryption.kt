@@ -57,6 +57,13 @@ class EncryptionDecryption {
 
     }
 
+//            val secretKeySeed = "816004029"
+//
+//            val aesKey = encryptionDecryption.generateAESKey(secretKeySeed)
+//            val aesIV = encryptionDecryption.generateIV(secretKeySeed)
+//
+//            val encryptedMessage = encryptionDecryption.encryptMessage(content.message, aesKey, aesIV)
+//            val encryptedContent = ContentModel(encryptedMessage, content.senderIp)
 
 
 }

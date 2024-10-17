@@ -8,7 +8,6 @@ import android.net.wifi.p2p.WifiP2pManager
 import android.os.Bundle
 import android.view.View
 import android.widget.EditText
-import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
@@ -18,6 +17,7 @@ import androidx.core.view.WindowInsetsCompat
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.example.student.chatlist.ChatListAdapter
+import com.example.student.encryption.EncryptionDecryption
 import com.example.student.models.ContentModel
 import com.example.student.network.Client
 import com.example.student.network.NetworkMessageInterface
@@ -45,6 +45,8 @@ class CommunicationActivity : AppCompatActivity(), WifiDirectInterface, PeerList
     private var server: Server? = null
     private var client: Client? = null
     private var deviceIp: String = ""
+    private val encryptionDecryption = EncryptionDecryption()
+
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -126,7 +128,6 @@ class CommunicationActivity : AppCompatActivity(), WifiDirectInterface, PeerList
     fun sendMessage(view: View) {
         val etMessage: EditText = findViewById(R.id.etMessage)
         val etString = etMessage.text.toString()
-
         val content = ContentModel(etString, deviceIp)
         etMessage.text.clear()
         if (wfdHasConnection && server != null) {
@@ -136,16 +137,6 @@ class CommunicationActivity : AppCompatActivity(), WifiDirectInterface, PeerList
         }
         chatListAdapter?.addItemToEnd(content)
     }
-
-//    fun sendMessage(view: View) {
-//        val etMessage:EditText = findViewById(R.id.etMessage)
-//        val etString = etMessage.text.toString()
-//        val content = ContentModel(etString, deviceIp)
-//        etMessage.text.clear()
-//        client?.sendMessage(content)
-//        chatListAdapter?.addItemToEnd(content)
-//
-//    }
 
     override fun onWiFiDirectStateChanged(isEnabled: Boolean) {
         wfdAdapterEnabled = isEnabled
@@ -179,6 +170,9 @@ class CommunicationActivity : AppCompatActivity(), WifiDirectInterface, PeerList
         toast.show()
         wfdHasConnection = groupInfo != null
 
+        val etStudentID: EditText = findViewById(R.id.etStudentID)
+        val studentID = etStudentID.text.toString()
+
         if (groupInfo == null){
             server?.close()
             client?.close()
@@ -186,7 +180,7 @@ class CommunicationActivity : AppCompatActivity(), WifiDirectInterface, PeerList
             server = Server(this)
             deviceIp = "192.168.49.1"
         } else if (!groupInfo.isGroupOwner && client == null) {
-            client = Client(this)
+            client = Client(this,studentID)
             deviceIp = client!!.ip
         }
     }

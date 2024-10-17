@@ -1,20 +1,24 @@
 package com.example.student.network
 
 import android.util.Log
-import com.example.student.encryption.EncryptionDecryption
 import com.google.gson.Gson
 import com.example.student.models.ContentModel
+import com.example.student.encryption.EncryptionDecryption
 import java.io.BufferedReader
 import java.io.BufferedWriter
 import java.net.Socket
+import javax.crypto.spec.IvParameterSpec
+import javax.crypto.spec.SecretKeySpec
 import kotlin.concurrent.thread
 
-class Client (private val networkMessageInterface: NetworkMessageInterface){
+class Client (private val networkMessageInterface: NetworkMessageInterface,studentID: String){
     private lateinit var clientSocket: Socket
     private lateinit var reader: BufferedReader
     private lateinit var writer: BufferedWriter
-    var ip:String = ""
+    private lateinit var aesKey: SecretKeySpec
+    private lateinit var aesIV: IvParameterSpec
     private val encryptionDecryption = EncryptionDecryption()
+    var ip:String = ""
 
     init {
         thread {
@@ -22,11 +26,15 @@ class Client (private val networkMessageInterface: NetworkMessageInterface){
             reader = clientSocket.inputStream.bufferedReader()
             writer = clientSocket.outputStream.bufferedWriter()
             ip = clientSocket.inetAddress.hostAddress!!
+            val hashedID = encryptionDecryption.hashStrSha256(studentID)
+            aesKey = encryptionDecryption.generateAESKey(hashedID)
+            aesIV = encryptionDecryption.generateIV(hashedID)
             while(true){
                 try{
                     val serverResponse = reader.readLine()
                     if (serverResponse != null){
-                        val serverContent = Gson().fromJson(serverResponse, ContentModel::class.java)
+                        val decryptedMessage = encryptionDecryption.decryptMessage(serverResponse,aesKey,aesIV)
+                        val serverContent = Gson().fromJson(decryptedMessage, ContentModel::class.java)
                         networkMessageInterface.onContent(serverContent)
                     }
                 } catch(e: Exception){
@@ -44,25 +52,12 @@ class Client (private val networkMessageInterface: NetworkMessageInterface){
                 throw Exception("We aren't currently connected to the server!")
             }
             val contentAsStr: String = Gson().toJson(content)
-            writer.write("$contentAsStr\n")
+            val encryptedMessage = encryptionDecryption.encryptMessage(contentAsStr, aesKey, aesIV)
+            writer.write("$encryptedMessage\n")
             writer.flush()
         }
     }
 
-
-//            if (studentId.isNotBlank() && studentId.toInt() >= 816000000 && studentId.toInt() <= 816999999) {
-//                // Example: Hash and use the student ID
-//                val hashedStudentId = encryptionDecryption.hashStrSha256(studentId)
-//            } else {
-////                Toast.makeText(this, "Please enter a valid student ID", Toast.LENGTH_SHORT).show()
-//            }
-//            val secretKeySeed = "816004029"
-//
-//            val aesKey = encryptionDecryption.generateAESKey(secretKeySeed)
-//            val aesIV = encryptionDecryption.generateIV(secretKeySeed)
-//
-//            val encryptedMessage = encryptionDecryption.encryptMessage(content.message, aesKey, aesIV)
-//            val encryptedContent = ContentModel(encryptedMessage, content.senderIp)
 
     fun close(){
         clientSocket.close()
