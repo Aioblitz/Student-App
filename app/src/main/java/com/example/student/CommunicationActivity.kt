@@ -45,7 +45,7 @@ class CommunicationActivity : AppCompatActivity(), WifiDirectInterface, PeerList
     private var server: Server? = null
     private var client: Client? = null
     private var deviceIp: String = ""
-    private val encryptionDecryption = EncryptionDecryption()
+//    private val encryptionDecryption = EncryptionDecryption()
 
 
     override fun onCreate(savedInstanceState: Bundle?) {
