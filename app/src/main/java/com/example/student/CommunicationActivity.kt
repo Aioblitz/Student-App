@@ -27,6 +27,14 @@ import com.example.student.peerlist.PeerListAdapterInterface
 import com.example.student.wifidirect.WifiDirectInterface
 import com.example.student.wifidirect.WifiDirectManager
 
+//Need to establish a challenge-response protocol to authenticate the student
+//Upon joining the class, the student sends a message to the lecturer “I am here”. (This
+//message should not be shown in the chat interface)
+//Lecturer device sends R, (random number) to student device (This message should not
+//be shown in the chat interface)
+//Student replies to lecturer by encrypting R as follows: e(R, Hash(StudentID))
+//Lecturer verifies by ensuring: : d (Hash(StudentID), e(R, Hash(StudentID))) = R
+
 class CommunicationActivity : AppCompatActivity(), WifiDirectInterface, PeerListAdapterInterface, NetworkMessageInterface {
     private var wfdManager: WifiDirectManager? = null
 
@@ -103,14 +111,6 @@ class CommunicationActivity : AppCompatActivity(), WifiDirectInterface, PeerList
     }
 
     private fun updateUI(){
-        //The rules for updating the UI are as follows:
-        // IF the WFD adapter is NOT enabled then
-        //      Show UI that says turn on the wifi adapter
-        // ELSE IF there is NO WFD connection then I need to show a view that allows the user to either
-        // 1) create a group with them as the group owner OR
-        // 2) discover nearby groups
-        // ELSE IF there are nearby groups found, i need to show them in a list
-        // ELSE IF i have a WFD connection i need to show a chat interface where i can send/receive messages
         val wfdAdapterErrorView:ConstraintLayout = findViewById(R.id.clWfdAdapterDisabled)
         wfdAdapterErrorView.visibility = if (!wfdAdapterEnabled) View.VISIBLE else View.GONE
 
@@ -196,15 +196,7 @@ class CommunicationActivity : AppCompatActivity(), WifiDirectInterface, PeerList
     }
 
     override fun onPeerClicked(peer: WifiP2pDevice) {
-        //Need to establish a challenge-response protocol to authenticate the student
-        //Upon joining the class, the student sends a message to the lecturer “I am here”. (This
-        //message should not be shown in the chat interface)
-        //Lecturer device sends R, (random number) to student device (This message should not
-        //be shown in the chat interface)
-        //Student replies to lecturer by encrypting R as follows: e(R, Hash(StudentID))
-        //Lecturer verifies by ensuring: : d (Hash(StudentID), e(R, Hash(StudentID))) = R
             wfdManager?.connectToPeer(peer)
-
     }
 
 
