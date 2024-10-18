@@ -20,6 +20,7 @@ class Client (private val networkMessageInterface: NetworkMessageInterface,stude
     private val encryptionDecryption = EncryptionDecryption()
     var ip:String = ""
 
+
     init {
         thread {
             clientSocket = Socket("192.168.49.1", Server.PORT)
@@ -29,6 +30,20 @@ class Client (private val networkMessageInterface: NetworkMessageInterface,stude
             val hashedID = encryptionDecryption.hashStrSha256(studentID)
             aesKey = encryptionDecryption.generateAESKey(hashedID)
             aesIV = encryptionDecryption.generateIV(hashedID)
+
+            try {
+                val receivedR = reader.readLine()
+                if (receivedR != null) {
+                    Log.d("CLIENT", "Received R: $receivedR")
+                    val encryptedR = encryptionDecryption.encryptMessage(receivedR, aesKey, aesIV)
+                    val content = ContentModel(encryptedR,ip)
+                    sendMessage(content)
+                }
+
+            }catch (e: Exception){
+                Log.e("CLIENT", "Error receiving R")
+                e.printStackTrace()
+            }
             while(true){
                 try{
                     val serverResponse = reader.readLine()
@@ -58,6 +73,16 @@ class Client (private val networkMessageInterface: NetworkMessageInterface,stude
         }
     }
 
+    fun sendHiddenMessage(content: ContentModel) {
+        thread {
+            if (!clientSocket.isConnected) {
+                throw Exception("We aren't currently connected to the server!")
+            }
+            val contentAsStr: String = Gson().toJson(content)
+            writer.write("$contentAsStr\n")
+            writer.flush()
+        }
+    }
 
     fun close(){
         clientSocket.close()

@@ -22,8 +22,8 @@ class Server(private val iFaceImpl: NetworkMessageInterface) {
 
     private val svrSocket: ServerSocket = ServerSocket(PORT, 0, InetAddress.getByName("192.168.49.1"))
     private val clientMap: HashMap<String, Socket> = HashMap()
-    private lateinit var aesKey: SecretKeySpec
-    private lateinit var aesIV: IvParameterSpec
+    private var aesKey: SecretKeySpec
+    private var aesIV: IvParameterSpec
     private val encryptionDecryption = EncryptionDecryption()
 
     init {

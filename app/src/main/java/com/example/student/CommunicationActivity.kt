@@ -182,6 +182,9 @@ class CommunicationActivity : AppCompatActivity(), WifiDirectInterface, PeerList
         } else if (!groupInfo.isGroupOwner && client == null) {
             client = Client(this,studentID)
             deviceIp = client!!.ip
+            val challengeResponseProtocol = ContentModel("I am Here","192.168.49.1" )
+            client?.sendHiddenMessage(challengeResponseProtocol)
+
         }
     }
 
@@ -201,6 +204,7 @@ class CommunicationActivity : AppCompatActivity(), WifiDirectInterface, PeerList
         //Student replies to lecturer by encrypting R as follows: e(R, Hash(StudentID))
         //Lecturer verifies by ensuring: : d (Hash(StudentID), e(R, Hash(StudentID))) = R
             wfdManager?.connectToPeer(peer)
+
     }
 
 
