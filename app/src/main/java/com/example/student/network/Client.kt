@@ -73,6 +73,7 @@ class Client(
             val encryptedNonce = encryptionDecryption.encryptMessage(nonce, aesKey, aesIV)
             val responseMessage = ContentModel(encryptedNonce, ip, null)
             sendMessage(responseMessage)
+            authenticated = true
         } catch (e: Exception) {
             Log.e("CLIENT", "Error handling challenge response: ${e.message}")
         }
@@ -115,10 +116,16 @@ class Client(
     }
 
     fun sendMessage(content: ContentModel) {
-        val message = Gson().toJson(content)
-        writer.write("$message\n")
-        writer.flush()
-        Log.d("CLIENT", "Sent message: $message")
+        thread {
+            try {
+                val message = Gson().toJson(content)
+                writer.write("$message\n")
+                writer.flush()
+                Log.d("CLIENT", "Sent message: $message")
+            } catch (e: Exception) {
+                Log.e("CLIENT", "Error sending message: ${e.message}")
+            }
+        }
     }
 
     fun close() {

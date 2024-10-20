@@ -35,7 +35,6 @@ class EncryptionDecryption {
         return Base64.getEncoder().encodeToString(encrypted)
     }
 
-    @RequiresApi(Build.VERSION_CODES.O)
     fun decryptMessage(encryptedMessage: String, key: SecretKeySpec, iv: IvParameterSpec): String {
         val cipher = Cipher.getInstance("AES/CBC/PKCS5Padding")
         cipher.init(Cipher.DECRYPT_MODE, key, iv)
