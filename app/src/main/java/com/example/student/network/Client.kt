@@ -93,7 +93,7 @@ class Client(
 
             val responseMessage = ContentModel(encryptedNonce, ip, null)
             sendMessage(responseMessage)
-            authenticated = true  // Set authentication to true only after key/IV is initialized
+            authenticated = true  // Set authentication to true only after key/IV are initialized
 
         } catch (e: Exception) {
             Log.e("CLIENT", "Error handling challenge response: ${e.message}")
@@ -121,7 +121,7 @@ class Client(
         try {
             if (!authenticated) {
                 Log.e("CLIENT", "Client is not authenticated, skipping message decryption.")
-                return  // Dont try to decrypt if not authenticated
+                return  // Do not attempt to decrypt if not authenticated
             }
 
             // Proceed with decryption only if the client is authenticated and keys are initialized
