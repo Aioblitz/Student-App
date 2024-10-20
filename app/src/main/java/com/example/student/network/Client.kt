@@ -67,10 +67,26 @@ class Client(
     private fun handleChallengeResponse(serverContent: ContentModel) {
         try {
             val nonce = serverContent.message
+            Log.d("CLIENT", "Received nonce from server: $nonce")
+
+            if (nonce == null) {
+                Log.e("CLIENT", "Received null nonce from server")
+                return
+            }
+
             val hashedID = encryptionDecryption.hashStrSha256(studentId)
             val aesKey = encryptionDecryption.generateAESKey(hashedID)
             val aesIV = encryptionDecryption.generateIV(hashedID)
+            Log.d("CLIENT", "Encrypting with key: ${aesKey.encoded.joinToString("") { "%02x".format(it) }} and IV: ${aesIV.iv.joinToString("") { "%02x".format(it) }}")
             val encryptedNonce = encryptionDecryption.encryptMessage(nonce, aesKey, aesIV)
+
+            Log.d("CLIENT", "Encrypted nonce: $encryptedNonce")
+
+            if (encryptedNonce == null) {
+                Log.e("CLIENT", "Failed to encrypt nonce")
+                return
+            }
+
             val responseMessage = ContentModel(encryptedNonce, ip, null)
             sendMessage(responseMessage)
             authenticated = true
