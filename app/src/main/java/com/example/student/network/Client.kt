@@ -67,12 +67,34 @@ class Client(
     private fun handleChallengeResponse(serverContent: ContentModel) {
         try {
             val nonce = serverContent.message
+            Log.d("CLIENT", "Received nonce from server: $nonce")
+
+            if (nonce == null) {
+                Log.e("CLIENT", "Received null nonce from server")
+                return
+            }
+
             val hashedID = encryptionDecryption.hashStrSha256(studentId)
-            val aesKey = encryptionDecryption.generateAESKey(hashedID)
-            val aesIV = encryptionDecryption.generateIV(hashedID)
+
+            // Initialize AES key and IV once
+            aesKey = encryptionDecryption.generateAESKey(hashedID)
+            aesIV = encryptionDecryption.generateIV(hashedID)
+
+            Log.d("CLIENT", "Encrypting with key: ${aesKey.encoded.joinToString("") { "%02x".format(it) }} and IV: ${aesIV.iv.joinToString("") { "%02x".format(it) }}")
+
             val encryptedNonce = encryptionDecryption.encryptMessage(nonce, aesKey, aesIV)
+
+            Log.d("CLIENT", "Encrypted nonce: $encryptedNonce")
+
+            if (encryptedNonce == null) {
+                Log.e("CLIENT", "Failed to encrypt nonce")
+                return
+            }
+
             val responseMessage = ContentModel(encryptedNonce, ip, null)
             sendMessage(responseMessage)
+            authenticated = true  // Set authentication to true only after key/IV are initialized
+
         } catch (e: Exception) {
             Log.e("CLIENT", "Error handling challenge response: ${e.message}")
         }
@@ -97,6 +119,17 @@ class Client(
     @RequiresApi(Build.VERSION_CODES.O)
     private fun handleServerMessage(content: ContentModel) {
         try {
+            if (!authenticated) {
+                Log.e("CLIENT", "Client is not authenticated, skipping message decryption.")
+                return  // Do not attempt to decrypt if not authenticated
+            }
+
+            // Proceed with decryption only if the client is authenticated and keys are initialized
+            if (!::aesKey.isInitialized || !::aesIV.isInitialized) {
+                Log.e("CLIENT", "AES Key or IV not initialized, skipping message decryption.")
+                return
+            }
+
             val decryptedMessage = encryptionDecryption.decryptMessage(content.message, aesKey, aesIV)
             Log.d("CLIENT", "Decrypted message from server: $decryptedMessage")
 
@@ -115,10 +148,16 @@ class Client(
     }
 
     fun sendMessage(content: ContentModel) {
-        val message = Gson().toJson(content)
-        writer.write("$message\n")
-        writer.flush()
-        Log.d("CLIENT", "Sent message: $message")
+        thread {
+            try {
+                val message = Gson().toJson(content)
+                writer.write("$message\n")
+                writer.flush()
+                Log.d("CLIENT", "Sent message: $message")
+            } catch (e: Exception) {
+                Log.e("CLIENT", "Error sending message: ${e.message}")
+            }
+        }
     }
 
     fun close() {
