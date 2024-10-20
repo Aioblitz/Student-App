@@ -63,24 +63,12 @@ class Client(
     private fun handleChallengeResponse(serverContent: ContentModel) {
         try {
             val nonce = serverContent.message
-            Log.d("CLIENT", "Received nonce from server: $nonce")
-
             val hashedID = encryptionDecryption.hashStrSha256(studentId)
             aesKey = encryptionDecryption.generateAESKey(hashedID)
             aesIV = encryptionDecryption.generateIV(hashedID)
-
             val encryptedNonce = encryptionDecryption.encryptMessage(nonce, aesKey, aesIV)
             val responseMessage = ContentModel(encryptedNonce, ip, null)
             sendMessage(responseMessage)
-
-            Log.d("CLIENT", "Sent encrypted nonce response to server")
-            authenticated = true
-
-            // Notify the UI that the client is authenticated
-            runOnUiThread {
-                networkMessageInterface.onContent(serverContent)
-            }
-
         } catch (e: Exception) {
             Log.e("CLIENT", "Error handling challenge response: ${e.message}")
         }
