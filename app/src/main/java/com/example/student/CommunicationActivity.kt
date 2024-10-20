@@ -25,6 +25,7 @@ import com.example.student.peerlist.PeerListAdapter
 import com.example.student.peerlist.PeerListAdapterInterface
 import com.example.student.wifidirect.WifiDirectInterface
 import com.example.student.wifidirect.WifiDirectManager
+import kotlin.concurrent.thread
 
 class CommunicationActivity : AppCompatActivity(), WifiDirectInterface, PeerListAdapterInterface, NetworkMessageInterface {
     private var wfdManager: WifiDirectManager? = null
@@ -130,7 +131,9 @@ class CommunicationActivity : AppCompatActivity(), WifiDirectInterface, PeerList
 
         // Send the message using the client
         if (client != null) {
-            client?.sendMessage(content)
+            thread {
+                client?.sendMessage(content)
+            }
 
             // Update the chat UI to display the sent message
             chatListAdapter?.addItemToEnd(content)
