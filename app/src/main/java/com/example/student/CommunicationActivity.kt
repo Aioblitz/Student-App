@@ -114,12 +114,32 @@ class CommunicationActivity : AppCompatActivity(), WifiDirectInterface, PeerList
 
     fun sendMessage(view: View) {
         val etMessage: EditText = findViewById(R.id.etMessage)
-        val etString = etMessage.text.toString()
-        val content = ContentModel(etString, deviceIp)
+        val messageText = etMessage.text.toString().trim()
+
+        if (messageText.isEmpty()) {
+            // Show a toast if the message is empty
+            Toast.makeText(this, "Message cannot be empty", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        // Create the content model with the message and the local device IP
+        val content = ContentModel(messageText, deviceIp)
+
+        // Clear the input field after sending the message
         etMessage.text.clear()
-        client?.sendMessage(content)
-        chatListAdapter?.addItemToEnd(content)
+
+        // Send the message using the client
+        if (client != null) {
+            client?.sendMessage(content)
+
+            // Update the chat UI to display the sent message
+            chatListAdapter?.addItemToEnd(content)
+        } else {
+            // If the client is null, show a toast indicating a failure
+            Toast.makeText(this, "Unable to send message: No connection established", Toast.LENGTH_SHORT).show()
+        }
     }
+
 
     override fun onWiFiDirectStateChanged(isEnabled: Boolean) {
         wfdAdapterEnabled = isEnabled
@@ -143,7 +163,6 @@ class CommunicationActivity : AppCompatActivity(), WifiDirectInterface, PeerList
         updateUI()
     }
 
-    // CommunicationActivity.kt
     override fun onGroupStatusChanged(groupInfo: WifiP2pGroup?) {
         val text = if (groupInfo == null) {
             "Group is not formed"
@@ -172,6 +191,12 @@ class CommunicationActivity : AppCompatActivity(), WifiDirectInterface, PeerList
         toast.show()
     }
 
+    override fun onAuthenticationError() {
+        Toast.makeText(this, "Authentication Error:\nInvalid ID", Toast.LENGTH_SHORT).show()
+    }
+
+
+
     override fun onPeerClicked(peer: WifiP2pDevice) {
         wfdManager?.connectToPeer(peer)
     }
@@ -180,5 +205,6 @@ class CommunicationActivity : AppCompatActivity(), WifiDirectInterface, PeerList
         runOnUiThread {
             chatListAdapter?.addItemToEnd(content)
         }
+        updateUI()
     }
 }

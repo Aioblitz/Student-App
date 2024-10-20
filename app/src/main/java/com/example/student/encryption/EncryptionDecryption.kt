@@ -8,36 +8,45 @@ import javax.crypto.SecretKey
 import javax.crypto.Cipher
 import kotlin.io.encoding.Base64
 import kotlin.io.encoding.ExperimentalEncodingApi
-
+import java.security.SecureRandom
 
 class EncryptionDecryption {
 
     fun ByteArray.toHex() = joinToString(separator = "") { byte -> "%02x".format(byte) }
 
-    fun getFirstNChars(str: String, n:Int) = str.substring(0,n)
+    private fun getFirstNChars(input: String, n: Int): String {
+        return if (input.length < n) {
+            input.padEnd(n, '0') // Pad with zeros if the input is shorter than required
+        } else {
+            input.substring(0, n)
+        }
+    }
 
-    fun hashStrSha256(str: String): String{
+    fun hashStrSha256(str: String): String {
         val algorithm = "SHA-256"
         val hashedString = MessageDigest.getInstance(algorithm).digest(str.toByteArray(UTF_8))
-        return hashedString.toHex();
+        return hashedString.toHex()
     }
 
     fun generateAESKey(seed: String): SecretKeySpec {
-        val first32Chars = getFirstNChars(seed,32)
-        val secretKey = SecretKeySpec(first32Chars.toByteArray(), "AES")
-        return secretKey
+        val sha256 = MessageDigest.getInstance("SHA-256")
+        val hashedKey = sha256.digest(seed.toByteArray(UTF_8))
+        return SecretKeySpec(hashedKey.copyOf(16), "AES")  // Use first 16 bytes for AES-128
     }
 
     fun generateIV(seed: String): IvParameterSpec {
-        val first16Chars = getFirstNChars(seed, 16)
-        return IvParameterSpec(first16Chars.toByteArray())
+        val sha256 = MessageDigest.getInstance("SHA-256")
+        val hashedIv = sha256.digest(seed.toByteArray(UTF_8))
+        return IvParameterSpec(hashedIv.copyOf(16))  // AES requires a 16-byte IV
     }
 
+
     @OptIn(ExperimentalEncodingApi::class)
-    fun encryptMessage(plaintext: String, aesKey:SecretKey, aesIv: IvParameterSpec):String{
+    fun encryptMessage(plaintext: String, aesKey: SecretKey, aesIv: IvParameterSpec): String {
         val plainTextByteArr = plaintext.toByteArray()
 
         val cipher = Cipher.getInstance("AES/CBC/PKCS5PADDING")
+
         cipher.init(Cipher.ENCRYPT_MODE, aesKey, aesIv)
 
         val encrypt = cipher.doFinal(plainTextByteArr)
@@ -45,25 +54,13 @@ class EncryptionDecryption {
     }
 
     @OptIn(ExperimentalEncodingApi::class)
-    fun decryptMessage(encryptedText: String, aesKey:SecretKey, aesIv: IvParameterSpec):String{
+    fun decryptMessage(encryptedText: String, aesKey: SecretKey, aesIv: IvParameterSpec): String {
         val textToDecrypt = Base64.Default.decode(encryptedText)
 
         val cipher = Cipher.getInstance("AES/CBC/PKCS5PADDING")
-
-        cipher.init(Cipher.DECRYPT_MODE, aesKey,aesIv)
+        cipher.init(Cipher.DECRYPT_MODE, aesKey, aesIv)
 
         val decrypt = cipher.doFinal(textToDecrypt)
         return String(decrypt)
-
     }
-
-//            val secretKeySeed = "816004029"
-//
-//            val aesKey = encryptionDecryption.generateAESKey(secretKeySeed)
-//            val aesIV = encryptionDecryption.generateIV(secretKeySeed)
-//
-//            val encryptedMessage = encryptionDecryption.encryptMessage(content.message, aesKey, aesIV)
-//            val encryptedContent = ContentModel(encryptedMessage, content.senderIp)
-
-
 }

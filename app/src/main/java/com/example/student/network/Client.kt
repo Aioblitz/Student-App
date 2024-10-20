@@ -4,6 +4,7 @@ import android.util.Log
 import com.example.student.encryption.EncryptionDecryption
 import com.example.student.models.ContentModel
 import com.google.gson.Gson
+import org.json.JSONObject
 import java.io.BufferedReader
 import java.io.BufferedWriter
 import java.net.Socket
@@ -11,93 +12,126 @@ import javax.crypto.spec.IvParameterSpec
 import javax.crypto.spec.SecretKeySpec
 import kotlin.concurrent.thread
 
-class Client(private val networkMessageInterface: NetworkMessageInterface, private val studentID: String) {
+class Client(
+    private val networkMessageInterface: NetworkMessageInterface,
+    private val studentId: String
+) {
     private lateinit var clientSocket: Socket
     private lateinit var reader: BufferedReader
     private lateinit var writer: BufferedWriter
+    private var authenticated = false
     private lateinit var aesKey: SecretKeySpec
     private lateinit var aesIV: IvParameterSpec
     private val encryptionDecryption = EncryptionDecryption()
     var ip: String = ""
 
     init {
-        connectToServer()
-    }
-
-    private fun connectToServer() {
         thread {
             try {
-                Log.d("CLIENT", "Attempting to connect to server...")
-                clientSocket = Socket("192.168.49.1", Server.PORT)
-                reader = clientSocket.inputStream.bufferedReader()
-                writer = clientSocket.outputStream.bufferedWriter()
-                ip = clientSocket.inetAddress.hostAddress!!
-                Log.d("CLIENT", "Connected to server at $ip")
-
-                // Send initial message to server
-                sendMessage(ContentModel("I am here", ip, studentID))
-                Log.d("CLIENT", "Sending 'I am here' message with student ID: $studentID")
-
-                while (true) {
-                    val serverResponse = reader.readLine()
-                    if (serverResponse != null) {
-                        Log.d("CLIENT", "Received response from server: $serverResponse")
-                        handleServerResponse(serverResponse)
-                    }
-                }
+                connectToServer()
+                authenticateWithServer()
+                listenForMessages()
             } catch (e: Exception) {
-                Log.e("CLIENT", "An error has occurred in the client")
-                e.printStackTrace()
+                Log.e("CLIENT", "An error occurred in the client initialization", e)
             }
         }
     }
 
-    private fun handleServerResponse(serverResponse: String) {
-        try {
-            val serverContent = Gson().fromJson(serverResponse, ContentModel::class.java)
-            if (serverContent.message != null && serverContent.message.length == 32) {
-                // Received nonce from server, encrypt it with student ID
-                Log.d("CLIENT", "Received nonce (R) from server: $serverContent")
-                val hashedID = encryptionDecryption.hashStrSha256(studentID)
-                aesKey = encryptionDecryption.generateAESKey(hashedID)
-                aesIV = encryptionDecryption.generateIV(hashedID)
-                val encryptedNonce = encryptionDecryption.encryptMessage(serverContent.message, aesKey, aesIV)
-                sendMessage(ContentModel(encryptedNonce, ip, studentID))
-                Log.d("CLIENT", "Sending encrypted nonce (R) back to server")
-            } else {
-                // Handle regular messages
-                val decryptedMessage = encryptionDecryption.decryptMessage(serverContent.message, aesKey, aesIV)
-                val decryptedContent = Gson().fromJson(decryptedMessage, ContentModel::class.java)
-                networkMessageInterface.onContent(decryptedContent)
+    private fun connectToServer() {
+        clientSocket = Socket("192.168.49.1", Server.PORT)
+        reader = clientSocket.inputStream.bufferedReader()
+        writer = clientSocket.outputStream.bufferedWriter()
+        ip = clientSocket.inetAddress.hostAddress!!
+        Log.d("CLIENT", "Connected to server at 192.168.49.1")
+    }
+
+    private fun authenticateWithServer() {
+        val initialMessage = ContentModel("I am here", ip, studentId)
+        sendMessage(initialMessage)
+        Log.d("CLIENT", "Sent initial 'I am here' message with student ID: $studentId")
+
+        while (!authenticated) {
+            val serverResponse = reader.readLine()
+            if (serverResponse != null) {
+                Log.d("CLIENT", "Received response from server: $serverResponse")
+                val serverContent = Gson().fromJson(serverResponse, ContentModel::class.java)
+                handleChallengeResponse(serverContent)
             }
+        }
+    }
+
+    private fun handleChallengeResponse(serverContent: ContentModel) {
+        try {
+            val nonce = serverContent.message
+            Log.d("CLIENT", "Received nonce from server: $nonce")
+
+            // Generate AES key and IV using the hashed student ID (must match the server's method)
+            val hashedID = encryptionDecryption.hashStrSha256(studentId)
+            aesKey = encryptionDecryption.generateAESKey(hashedID)
+            aesIV = encryptionDecryption.generateIV(hashedID)
+
+            // Encrypt the nonce with AES and send it back to the server
+            val encryptedNonce = encryptionDecryption.encryptMessage(nonce, aesKey, aesIV)
+            val responseMessage = ContentModel(encryptedNonce, ip, studentId)
+            sendMessage(responseMessage)
+
+            Log.d("CLIENT", "Sent encrypted nonce response to server")
+
         } catch (e: Exception) {
-            Log.e("CLIENT", "Error handling server response")
-            e.printStackTrace()
+            Log.e("CLIENT", "Error handling challenge response: ${e.message}")
+        }
+    }
+
+    private fun listenForMessages() {
+        while (clientSocket.isConnected) {
+            try {
+                val serverMessage = reader.readLine()
+                if (serverMessage != null) {
+                    Log.d("CLIENT", "Received message from server: $serverMessage")
+                    val content = Gson().fromJson(serverMessage, ContentModel::class.java)
+                    handleServerMessage(content)
+                }
+            } catch (e: Exception) {
+                Log.e("CLIENT", "Error while listening for messages: ${e.message}")
+            }
+        }
+    }
+
+    private fun handleServerMessage(content: ContentModel) {
+        try {
+            // Decrypt the server's message using the AES key and IV
+            val decryptedMessage = encryptionDecryption.decryptMessage(content.message, aesKey, aesIV)
+            Log.d("CLIENT", "Decrypted message from server: $decryptedMessage")
+
+            // Assuming the decrypted message is in JSON format, parse it
+            val jsonObject = JSONObject(decryptedMessage)
+            val message = jsonObject.getString("message")
+            val senderIp = jsonObject.getString("senderIp")
+
+            // Create a ContentModel object with the decrypted data
+            val decryptedContent = ContentModel(message, senderIp)
+
+            // Pass the ContentModel to the UI via the interface
+            networkMessageInterface.onContent(decryptedContent)
+
+        } catch (e: Exception) {
+            Log.e("CLIENT", "Error decrypting message: ${e.message}")
         }
     }
 
     fun sendMessage(content: ContentModel) {
-        thread {
-            try {
-                if (!clientSocket.isConnected) {
-                    throw Exception("We aren't currently connected to the server!")
-                }
-                val contentAsStr: String = Gson().toJson(content)
-                writer.write("$contentAsStr\n")
-                writer.flush()
-            } catch (e: Exception) {
-                Log.e("CLIENT", "Failed to send message")
-                e.printStackTrace()
-            }
-        }
+        val message = Gson().toJson(content)
+        writer.write("$message\n")
+        writer.flush()
+        Log.d("CLIENT", "Sent message: $message")
     }
 
     fun close() {
         try {
             clientSocket.close()
+            Log.d("CLIENT", "Client socket closed")
         } catch (e: Exception) {
-            Log.e("CLIENT", "Error closing client socket")
-            e.printStackTrace()
+            Log.e("CLIENT", "Error closing client socket", e)
         }
     }
 }
