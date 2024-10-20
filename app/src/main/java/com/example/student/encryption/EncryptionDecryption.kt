@@ -1,42 +1,46 @@
 package com.example.student.encryption
 
-import java.security.MessageDigest
+import android.os.Build
+import androidx.annotation.RequiresApi
 import javax.crypto.Cipher
-import javax.crypto.KeyGenerator
-import javax.crypto.SecretKey
 import javax.crypto.spec.IvParameterSpec
 import javax.crypto.spec.SecretKeySpec
-import android.util.Base64
+import java.security.MessageDigest
+import java.util.Base64
 
 class EncryptionDecryption {
 
+    @RequiresApi(Build.VERSION_CODES.O)
     fun hashStrSha256(input: String): String {
-        val bytes = MessageDigest.getInstance("SHA-256").digest(input.toByteArray())
-        return bytes.joinToString("") { "%02x".format(it) }
+        val digest = MessageDigest.getInstance("SHA-256")
+        val hash = digest.digest(input.toByteArray(Charsets.UTF_8))
+        return Base64.getEncoder().encodeToString(hash)
     }
 
     fun generateAESKey(hashedID: String): SecretKeySpec {
-        val keyBytes = hashedID.toByteArray().copyOf(16) // Use the first 16 bytes for AES-128
+        val keyBytes = hashedID.toByteArray(Charsets.UTF_8).copyOf(16)
         return SecretKeySpec(keyBytes, "AES")
     }
 
     fun generateIV(hashedID: String): IvParameterSpec {
-        val ivBytes = hashedID.toByteArray().copyOf(16) // Use the first 16 bytes for IV
+        val ivBytes = hashedID.toByteArray(Charsets.UTF_8).copyOf(16)
         return IvParameterSpec(ivBytes)
     }
 
+    @RequiresApi(Build.VERSION_CODES.O)
     fun encryptMessage(message: String, key: SecretKeySpec, iv: IvParameterSpec): String {
         val cipher = Cipher.getInstance("AES/CBC/PKCS5Padding")
         cipher.init(Cipher.ENCRYPT_MODE, key, iv)
-        val encryptedBytes = cipher.doFinal(message.toByteArray())
-        return Base64.encodeToString(encryptedBytes, Base64.DEFAULT)
+        val encrypted = cipher.doFinal(message.toByteArray(Charsets.UTF_8))
+        return Base64.getEncoder().encodeToString(encrypted)
     }
 
+    @RequiresApi(Build.VERSION_CODES.O)
     fun decryptMessage(encryptedMessage: String, key: SecretKeySpec, iv: IvParameterSpec): String {
         val cipher = Cipher.getInstance("AES/CBC/PKCS5Padding")
         cipher.init(Cipher.DECRYPT_MODE, key, iv)
-        val decodedBytes = Base64.decode(encryptedMessage, Base64.DEFAULT)
-        val decryptedBytes = cipher.doFinal(decodedBytes)
-        return String(decryptedBytes)
+        val decodedBytes = Base64.getDecoder().decode(encryptedMessage)
+        val decrypted = cipher.doFinal(decodedBytes)
+        return String(decrypted, Charsets.UTF_8)
     }
 }

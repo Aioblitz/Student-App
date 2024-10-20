@@ -1,6 +1,8 @@
 package com.example.student.network
 
+import android.os.Build
 import android.util.Log
+import androidx.annotation.RequiresApi
 import com.example.student.encryption.EncryptionDecryption
 import com.example.student.models.ContentModel
 import com.google.gson.Gson
@@ -12,6 +14,7 @@ import javax.crypto.spec.IvParameterSpec
 import javax.crypto.spec.SecretKeySpec
 import kotlin.concurrent.thread
 
+@RequiresApi(Build.VERSION_CODES.O)
 class Client(
     private val networkMessageInterface: NetworkMessageInterface,
     private val studentId: String
@@ -45,6 +48,7 @@ class Client(
         Log.d("CLIENT", "Connected to server at 192.168.49.1")
     }
 
+    @RequiresApi(Build.VERSION_CODES.O)
     private fun authenticateWithServer() {
         val initialMessage = ContentModel("I am here", ip, null)
         sendMessage(initialMessage)
@@ -64,8 +68,8 @@ class Client(
         try {
             val nonce = serverContent.message
             val hashedID = encryptionDecryption.hashStrSha256(studentId)
-            aesKey = encryptionDecryption.generateAESKey(hashedID)
-            aesIV = encryptionDecryption.generateIV(hashedID)
+            val aesKey = encryptionDecryption.generateAESKey(hashedID)
+            val aesIV = encryptionDecryption.generateIV(hashedID)
             val encryptedNonce = encryptionDecryption.encryptMessage(nonce, aesKey, aesIV)
             val responseMessage = ContentModel(encryptedNonce, ip, null)
             sendMessage(responseMessage)
@@ -74,6 +78,7 @@ class Client(
         }
     }
 
+    @RequiresApi(Build.VERSION_CODES.O)
     private fun listenForMessages() {
         while (clientSocket.isConnected) {
             try {
@@ -89,6 +94,7 @@ class Client(
         }
     }
 
+    @RequiresApi(Build.VERSION_CODES.O)
     private fun handleServerMessage(content: ContentModel) {
         try {
             val decryptedMessage = encryptionDecryption.decryptMessage(content.message, aesKey, aesIV)

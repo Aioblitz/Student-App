@@ -5,12 +5,14 @@ import android.content.IntentFilter
 import android.net.wifi.p2p.WifiP2pDevice
 import android.net.wifi.p2p.WifiP2pGroup
 import android.net.wifi.p2p.WifiP2pManager
+import android.os.Build
 import android.os.Bundle
 import android.view.View
 import android.widget.EditText
 import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.enableEdgeToEdge
+import androidx.annotation.RequiresApi
 import androidx.appcompat.app.AppCompatActivity
 import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.core.view.ViewCompat
@@ -113,6 +115,7 @@ class CommunicationActivity : AppCompatActivity(), WifiDirectInterface, PeerList
         wfdConnectedView.visibility = if (wfdHasConnection) View.VISIBLE else View.GONE
     }
 
+    @RequiresApi(Build.VERSION_CODES.O)
     fun sendMessage(view: View) {
         val etMessage: EditText = findViewById(R.id.etMessage)
         val messageText = etMessage.text.toString().trim()
@@ -143,7 +146,6 @@ class CommunicationActivity : AppCompatActivity(), WifiDirectInterface, PeerList
         }
     }
 
-
     override fun onWiFiDirectStateChanged(isEnabled: Boolean) {
         wfdAdapterEnabled = isEnabled
         var text = "There was a state change in the WiFi Direct. Currently it is "
@@ -166,6 +168,7 @@ class CommunicationActivity : AppCompatActivity(), WifiDirectInterface, PeerList
         updateUI()
     }
 
+    @RequiresApi(Build.VERSION_CODES.O)
     override fun onGroupStatusChanged(groupInfo: WifiP2pGroup?) {
         val text = if (groupInfo == null) {
             "Group is not formed"
@@ -197,8 +200,6 @@ class CommunicationActivity : AppCompatActivity(), WifiDirectInterface, PeerList
     override fun onAuthenticationError() {
         Toast.makeText(this, "Authentication Error:\nInvalid ID", Toast.LENGTH_SHORT).show()
     }
-
-
 
     override fun onPeerClicked(peer: WifiP2pDevice) {
         wfdManager?.connectToPeer(peer)
