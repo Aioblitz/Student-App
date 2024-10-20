@@ -46,9 +46,9 @@ class Client(
     }
 
     private fun authenticateWithServer() {
-        val initialMessage = ContentModel("I am here", ip, studentId)
+        val initialMessage = ContentModel("I am here", ip, null)
         sendMessage(initialMessage)
-        Log.d("CLIENT", "Sent initial 'I am here' message with student ID: $studentId")
+        Log.d("CLIENT", "Sent initial 'I am here' message")
 
         while (!authenticated) {
             val serverResponse = reader.readLine()
@@ -65,17 +65,21 @@ class Client(
             val nonce = serverContent.message
             Log.d("CLIENT", "Received nonce from server: $nonce")
 
-            // Generate AES key and IV using the hashed student ID (must match the server's method)
             val hashedID = encryptionDecryption.hashStrSha256(studentId)
             aesKey = encryptionDecryption.generateAESKey(hashedID)
             aesIV = encryptionDecryption.generateIV(hashedID)
 
-            // Encrypt the nonce with AES and send it back to the server
             val encryptedNonce = encryptionDecryption.encryptMessage(nonce, aesKey, aesIV)
-            val responseMessage = ContentModel(encryptedNonce, ip, studentId)
+            val responseMessage = ContentModel(encryptedNonce, ip, null)
             sendMessage(responseMessage)
 
             Log.d("CLIENT", "Sent encrypted nonce response to server")
+            authenticated = true
+
+            // Notify the UI that the client is authenticated
+            runOnUiThread {
+                networkMessageInterface.onContent(serverContent)
+            }
 
         } catch (e: Exception) {
             Log.e("CLIENT", "Error handling challenge response: ${e.message}")
@@ -99,20 +103,17 @@ class Client(
 
     private fun handleServerMessage(content: ContentModel) {
         try {
-            // Decrypt the server's message using the AES key and IV
             val decryptedMessage = encryptionDecryption.decryptMessage(content.message, aesKey, aesIV)
             Log.d("CLIENT", "Decrypted message from server: $decryptedMessage")
 
-            // Assuming the decrypted message is in JSON format, parse it
             val jsonObject = JSONObject(decryptedMessage)
             val message = jsonObject.getString("message")
             val senderIp = jsonObject.getString("senderIp")
 
-            // Create a ContentModel object with the decrypted data
             val decryptedContent = ContentModel(message, senderIp)
-
-            // Pass the ContentModel to the UI via the interface
-            networkMessageInterface.onContent(decryptedContent)
+            runOnUiThread {
+                networkMessageInterface.onContent(decryptedContent)
+            }
 
         } catch (e: Exception) {
             Log.e("CLIENT", "Error decrypting message: ${e.message}")
@@ -133,5 +134,11 @@ class Client(
         } catch (e: Exception) {
             Log.e("CLIENT", "Error closing client socket", e)
         }
+    }
+
+    // Helper function to run code on the main thread
+    private fun runOnUiThread(action: () -> Unit) {
+        val mainHandler = android.os.Handler(android.os.Looper.getMainLooper())
+        mainHandler.post(action)
     }
 }
